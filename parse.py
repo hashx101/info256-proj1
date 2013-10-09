@@ -66,7 +66,7 @@ def parse_line(line):
     metadata, sentence = metadata.split(','), sentence.strip()
     rawFeaturesList = map(lambda c: re.search(FEATURE_PAT, c), metadata)
     tagsList = map(lambda c: re.findall(TAG_PAT, c), metadata)
-    assert(len(featuresList) == len(tagsList)) # would imply shoddy regexes
+    assert(len(rawFeaturesList) == len(tagsList)) # would imply shoddy regexes
     featureList = []
     for feature, tags in zip(rawFeaturesList, tagsList):
         if feature:
@@ -74,11 +74,11 @@ def parse_line(line):
                                        feature.group('sign'),
                                        feature.group('magnitude'),
                                        tags))
-    return TaggedSentence(sentence, fL)
+    return TaggedSentence(sentence, featureList)
 
 def main(f='/home/alexm/product_data_training_heldout/training/Diaper Champ.txt'):
-    parse_file(f)
-    #parse_line("costly[-2][u][cc],derp[-1][cs][p]## Too costly and not efficient if you ask me!")
+    print parse_file(f)
+    print parse_line("costly[-2][u][cc],derp[-1][cs][p]## Too costly and not efficient if you ask me!")
 
 if __name__ == "__main__":
     main('/home/alexm/product_data_training_heldout/training/Diaper Champ.txt')
