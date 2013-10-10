@@ -5,34 +5,46 @@ import random
 from pprint import pprint
 from sklearn.svm import LinearSVC
 from nltk.classify import SklearnClassifier
-from primesieve import genPrimes
+from hyphen import Hyphenator
+import hyphen.dictools
+import collections
+import re
 
+
+###############################################################################
+## Feature generation
+###############################################################################
 
 ALPHABET = 'abcdefghijklmnopqrstuvwxyz'
 VOWELS = 'aeiouy'
 CONSONANTS = 'bcdfghjklmnpqrstvwxyz'
-
 definedFns = []
 
-primeGen = genPrimes()
-convDict = dict()
-[convDict.update({letter: primeGen.next()}) for letter in ALPHABET]
+def extractSylables():
+    hyphenator = Hyphenator('en_US')
+    d = dict()
+    nameDict = {}
+    map(lambda name: nameDict.update({name: 1}), list(nltk.corpus.names.words()))
+    for word in [word for word in nltk.corpus.brown.words() if word not in nameDict]:
+        syllables = hyphenator.syllables(unicode(word.lower()))
+        if len(syllables) > 1:
+            for syllable in syllables:
+                if syllable in d:
+                    d[syllable] += 1
+                else:
+                    d[syllable] = 1
+    topSyllables = sorted(d.items(), key=lambda t: -t[1])
+    return map(lambda t: t[0], topSyllables[:3000])
 
-for consonant1 in CONSONANTS:
-        for vowel1 in VOWELS:
-            exec("""def syl_{}{}(inp):\treturn "{}{}" in inp""".format(consonant1, vowel1, consonant1, vowel1))
-            fnName = "syl_{}{}".format(consonant1, vowel1)
+
+for syllable in extractSylables():
+    if re.match("[_A-Za-z][_a-zA-Z0-9]*", syllable):
+        try:
+            exec("""def syl_{}(inp):\treturn "{}" in inp""".format(syllable, syllable))
+            fnName = "syl_{}".format(syllable)
             definedFns.append((fnName, eval(fnName)))
-            convDict.update({consonant1 + vowel1: primeGen.next()})
-            for vowel2 in VOWELS:
-                exec("""def syl_{}{}{}(inp):\treturn "{}{}{}" in inp""".format(consonant1, vowel1, vowel2, consonant1, vowel1, vowel2))
-                fnName = "syl_{}{}{}".format(consonant1, vowel1, vowel2)
-                definedFns.append((fnName, eval(fnName)))
-                exec("""def syl_{}{}(inp):\treturn "{}{}" in inp""".format(vowel1, vowel2, vowel1, vowel2))
-                fnName = "syl_{}{}".format(vowel1, vowel2)
-                definedFns.append((fnName, eval(fnName)))
-
-
+        except:
+            print('Skipping syllable {}'.format(syllable))
 
 def num_vowels(inp):
     return len([c for c in inp if c.lower() in VOWELS])
@@ -52,6 +64,10 @@ for fn in [('num_vowels', num_vowels),
            ('consonants_ratio', consonants_ratio)]:
     definedFns.append(fn)
 
+###############################################################################
+## Classifier
+###############################################################################
+
 def taggedNames():
     names = ([(name.lower(), 'male') for name in namelist.words('male.txt')] +
              [(name.lower(), 'female') for name in namelist.words('female.txt')])
@@ -63,11 +79,6 @@ def applyFeatures(inp, *vectorFns):
     featureDict = {}
     for fn in vectorFns:
         out = fn(inp)
-        if type(out) == str:
-            if out in convDict:
-                out = convDict[fn(inp)]
-            else:
-                out = 0
         featureDict[fn.__name__] = out
     return featureDict
 
@@ -80,14 +91,12 @@ def buildClassifier(inp,
     classifier = SklearnClassifier(LinearSVC()).train(trainSet)
     return classifier, nltk.classify.accuracy(classifier, processedFeatures)
 
-def max_score():
+def maxScore():
     male = set([name.lower() for name in namelist.words('male.txt')])
     female = set([name.lower() for name in namelist.words('female.txt')])
     return 1 - (len(male.intersection(female)) / (len(male) + len(female)))
 
-
 def main():
-    pprint(map(lambda x: x[0], definedFns))
     pprint("{} features".format(len(definedFns)))
     c, r = buildClassifier(taggedNames(), 0)
     print r
