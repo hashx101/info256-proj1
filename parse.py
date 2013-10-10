@@ -1,6 +1,8 @@
 from collections import namedtuple
 import re
 import pprint
+import glob
+import os
 
 
 class Feature(object):
@@ -62,7 +64,10 @@ def parse_file(filepath):
     return parsedReviews
 
 def parse_line(line):
-    metadata, sentence = line.split('##', 1)
+    try:
+        metadata, sentence = line.split('##', 1)
+    except:
+        print line
     metadata, sentence = metadata.split(','), sentence.strip()
     rawFeaturesList = map(lambda c: re.search(FEATURE_PAT, c), metadata)
     tagsList = map(lambda c: re.findall(TAG_PAT, c), metadata)
@@ -76,10 +81,18 @@ def parse_line(line):
                                        tags))
     return TaggedSentence(sentence, featureList)
 
-def main(f='/home/alexm/product_data_training_heldout/training/Diaper Champ.txt'):
-    print parse_file(f)
-    print parse_line("costly[-2][u][cc],derp[-1][cs][p]## Too costly and not efficient if you ask me!")
+def main():
+    directory = "data/training"
+    os.chdir(directory)
+    files = glob.glob("*.txt")
+    for filename in files:
+        for review in parse_file(os.path.join(os.curdir, filename)):
+            reviewText = ""
+            for taggedSentence in review:
+                reviewText += taggedSentence.sentence + '\n'
+            with open(os.path.join('../clean', filename), 'w') as f:
+                f.write(reviewText)
 
 if __name__ == "__main__":
-    main('/home/alexm/product_data_training_heldout/training/Diaper Champ.txt')
+    main()
 
