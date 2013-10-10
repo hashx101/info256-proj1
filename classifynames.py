@@ -20,31 +20,41 @@ VOWELS = 'aeiouy'
 CONSONANTS = 'bcdfghjklmnpqrstvwxyz'
 definedFns = []
 
-def extractSylables():
-    hyphenator = Hyphenator('en_US')
-    d = dict()
+def extractSylables(words, syllableConstraints=[]):
     nameDict = {}
-    map(lambda name: nameDict.update({name: 1}), list(nltk.corpus.names.words()))
-    for word in [word for word in nltk.corpus.brown.words() if word not in nameDict]:
+    [nameDict.update({word: 1}) for word in map(lambda w: w.lower(), nltk.corpus.names.words())]
+    
+    syllableConstraints.append(lambda s: len(s) > 1)
+    syllableConstraints.append(lambda s: len(s) < 5)
+    syllableConstraints.append(lambda s: s not in nameDict)
+
+    syllableCounts, hyphenator = collections.defaultdict(lambda: 1), Hyphenator('en_US')
+    for word in filter(lambda w: w.lower() not in nameDict, words):
         syllables = hyphenator.syllables(unicode(word.lower()))
-        if len(syllables) > 1:
-            for syllable in syllables:
-                if syllable in d:
-                    d[syllable] += 1
-                else:
-                    d[syllable] = 1
-    topSyllables = sorted(d.items(), key=lambda t: -t[1])
-    return map(lambda t: t[0], topSyllables[:3000])
+        for fn in syllableConstraints:
+            syllables = filter(fn, syllables)
+        for syllable in syllables:
+            syllableCounts[syllable] += 1
+    topSyllables = sorted(syllableCounts.items(), key=lambda t: -t[1])
+    return map(lambda t: t[0], topSyllables[:5000])
 
 
-for syllable in extractSylables():
-    if re.match("[_A-Za-z][_a-zA-Z0-9]*", syllable):
+for syllable in extractSylables(nltk.corpus.brown.words()):
+    if re.match("^[A-Za-z][a-zA-Z]*$", syllable):
         try:
             exec("""def syl_{}(inp):\treturn "{}" in inp""".format(syllable, syllable))
             fnName = "syl_{}".format(syllable)
             definedFns.append((fnName, eval(fnName)))
         except:
             print('Skipping syllable {}'.format(syllable))
+
+for letter in ALPHABET:
+    exec("""def startswith_{}(inp):\treturn inp.startswith("{}")""".format(letter, letter))
+    fnName = "startswith_{}".format(letter)
+    definedFns.append((fnName, eval(fnName)))
+    exec("""def endswith_{}(inp):\treturn inp.endswith("{}")""".format(letter, letter))
+    fnName = "endswith_{}".format(letter)
+    definedFns.append((fnName, eval(fnName)))
 
 def num_vowels(inp):
     return len([c for c in inp if c.lower() in VOWELS])
@@ -101,8 +111,6 @@ def main():
     c, r = buildClassifier(taggedNames(), 0)
     print r
     return c, r
-
-
 
 if __name__ == '__main__':
     main()
