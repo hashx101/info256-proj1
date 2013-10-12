@@ -1,5 +1,6 @@
 from __future__ import division
 import parse
+import util
 
 import nltk
 from sklearn.svm import LinearSVC
@@ -16,11 +17,32 @@ import glob
 ###############################################################################
 
 definedFns = []
+sentiments = util.getWordSentimentDict()
 
-def num_vowels(inp):
-    return len([c for c in inp if c.lower() in 'aeiouy'])
+def total_sentiment(inp):
+    total = 0
+    for word in map(lambda w: w.lower().strip(), inp.split(' ')):
+        if word in sentiments:
+            total += sentiments[word]
+    return total
 
-for fn in [('num_vowels', num_vowels)]:
+def num_positive_sentiment_words(inp):
+    totalPos = 0
+    for word in map(lambda w: w.lower().strip(), inp.split(' ')):
+        if word in sentiments and sentiments[word] > 0:
+            totalPos += 1
+    return totalPos
+
+def num_negative_sentiment_words(inp):
+    totalNeg = 0
+    for word in map(lambda w: w.lower().strip(), inp.split(' ')):
+        if word in sentiments and sentiments[word] < 0:
+            totalNeg += 1
+    return totalNeg
+
+for fn in [('total_sentiment', total_sentiment),
+           ('num_positive_sentiment_words', num_positive_sentiment_words),
+           ('num_negative_sentiment_words', num_negative_sentiment_words)]:
     definedFns.append(fn)
 
 ###############################################################################
@@ -54,7 +76,7 @@ def applyFeatures(inp, *vectorFns):
 
 
 def buildClassifier(inp,
-                    holdoutRatio=.1,
+                    holdoutRatio=0,
                     featureList=map(lambda tup: tup[1], definedFns)):
     processedFeatures = [(applyFeatures(name, *featureList), tag) for name, tag in inp]
     trainSet = processedFeatures[:int(len(processedFeatures) * (1 - holdoutRatio))]
@@ -63,11 +85,10 @@ def buildClassifier(inp,
     return classifier, nltk.classify.accuracy(classifier, holdoutSet)
 
 def main():
-    # pprint("{} features".format(len(definedFns)))
-    # c, r = buildClassifier(taggedNames(), 0)
-    # print r
-    # return c, r
-    print taggedReviews()
+    print("{} features".format(len(definedFns)))
+    c, r = buildClassifier(taggedReviews(), 0)
+    print r
+    return c, r
 
 if __name__ == '__main__':
     main()
