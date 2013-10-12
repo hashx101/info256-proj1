@@ -66,19 +66,21 @@ def parse_file(filepath):
 def parse_line(line):
     try:
         metadata, sentence = line.split('##', 1)
-    except:
+        metadata, sentence = metadata.split(','), sentence.strip()
+        rawFeaturesList = map(lambda c: re.search(FEATURE_PAT, c), metadata)
+        tagsList = map(lambda c: re.findall(TAG_PAT, c), metadata)
+        assert(len(rawFeaturesList) == len(tagsList)) # would imply shoddy regexes
+        featureList = []
+        for feature, tags in zip(rawFeaturesList, tagsList):
+            if feature:
+                featureList.append(Feature(feature.group('feature'),
+                                           feature.group('sign'),
+                                           feature.group('magnitude'),
+                                           tags))
+    except Exception as e:
+        print e
         print line
-    metadata, sentence = metadata.split(','), sentence.strip()
-    rawFeaturesList = map(lambda c: re.search(FEATURE_PAT, c), metadata)
-    tagsList = map(lambda c: re.findall(TAG_PAT, c), metadata)
-    assert(len(rawFeaturesList) == len(tagsList)) # would imply shoddy regexes
-    featureList = []
-    for feature, tags in zip(rawFeaturesList, tagsList):
-        if feature:
-            featureList.append(Feature(feature.group('feature'),
-                                       feature.group('sign'),
-                                       feature.group('magnitude'),
-                                       tags))
+    
     return TaggedSentence(sentence, featureList)
 
 def main():

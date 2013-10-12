@@ -12,7 +12,7 @@ import os
 import glob
 from pprint import pprint
 
-
+originalDir = os.curdir
 ###############################################################################
 ## Feature generation
 ###############################################################################
@@ -50,10 +50,9 @@ for fn in [('total_sentiment', total_sentiment),
 ## Classifier
 ###############################################################################
 
-def taggedReviews():
+def taggedReviews(directory="data/training"):
     """Generates a list of tagged sentence/sentiment tuples for training
     our classifier"""
-    directory = "data/training"
     os.chdir(directory)
     files = glob.glob("*.txt")
 
@@ -81,18 +80,22 @@ def applyFeatures(inp, *vectorFns):
 def buildClassifier(inp,
                     holdoutRatio=0,
                     featureList=map(lambda tup: tup[1], definedFns)):
-    processedFeatures = [(applyFeatures(name, *featureList), tag) for name, tag in inp]
+    processedFeatures = [(applyFeatures(text, *featureList), tag) for text, tag in inp]
     trainSet = processedFeatures[:int(len(processedFeatures) * (1 - holdoutRatio))]
     holdoutSet = processedFeatures[int(len(processedFeatures) * holdoutRatio):]
     classifier = SklearnClassifier(LinearSVC()).train(trainSet)
-    return classifier, nltk.classify.accuracy(classifier, holdoutSet)
+    if len(holdoutSet) > 0:
+        nltk.classify.accuracy(classifier, holdoutSet)
+    return classifier
+
 
 def main():
     pprint(map(lambda x: x[0], definedFns))
     print("{} features".format(len(definedFns)))
-    c, r = buildClassifier(taggedReviews(), 0)
-    print r
-    return c, r
+    c = buildClassifier(taggedReviews(), 0)
+    holdoutSet = taggedReviews('/home/alexm/info256/proj1/data/heldout')
+    print nltk.classify.accuracy(c, [(applyFeatures(text, *map(lambda tup: tup[1], definedFns)), tag) for text, tag in holdoutSet])
+    return c
 
 if __name__ == '__main__':
     main()
