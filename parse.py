@@ -86,12 +86,13 @@ def main():
     os.chdir(directory)
     files = glob.glob("*.txt")
     for filename in files:
-        for review in parse_file(os.path.join(os.curdir, filename)):
-            reviewText = ""
+        parsedReviews = parse_file(os.path.join(os.curdir, filename))
+        reviewText = ""
+        for review in parsedReviews:
             for taggedSentence in review:
                 reviewText += taggedSentence.sentence + '\n'
-            with open(os.path.join('../clean', filename), 'w') as f:
-                f.write(reviewText)
+        with open(os.path.join('../clean', filename), 'w') as f:
+            f.write(reviewText)
 
 if __name__ == "__main__":
     main()
