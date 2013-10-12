@@ -10,6 +10,7 @@ import collections
 import re
 import os
 import glob
+from pprint import pprint
 
 
 ###############################################################################
@@ -62,8 +63,10 @@ def taggedReviews():
         reviewText = ""
         for review in parsedReviews:
             for taggedSentence in review:
+                featureSentiment = 0
                 for feature in taggedSentence.features:
-                    taggedReviews.append((taggedSentence.sentence, feature.sign))
+                    featureSentiment += feature.sign * feature.magnitude
+                taggedReviews.append((taggedSentence.sentence, featureSentiment))
     return taggedReviews
 
 
@@ -85,6 +88,7 @@ def buildClassifier(inp,
     return classifier, nltk.classify.accuracy(classifier, holdoutSet)
 
 def main():
+    pprint(map(lambda x: x[0], definedFns))
     print("{} features".format(len(definedFns)))
     c, r = buildClassifier(taggedReviews(), 0)
     print r
