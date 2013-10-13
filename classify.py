@@ -48,20 +48,28 @@ def num_negative_sentiment_words(inp):
             totalNeg += 1
     return totalNeg
 
-for n, prefix in zip(range(1,6),['uni', 'bi', 'tri', 'quadra', 'penta']):
-    exec("{}gramDict = util.buildNGramDict(taggedReviews, {})".format(prefix, n))
-    exec("""def {}gram_score(inp):\n\ttotal = 0\n\tfor {}gram in nltk.ngrams(inp, 
-        {}):\n\t\ttotal += {}gramDict[{}gram]\n\treturn total""".format(prefix,
-                                                                         prefix,
-                                                                         n,
-                                                                         prefix,
-                                                                         prefix))
-    fnName = "{}gram_score".format(prefix)
-    definedFns.append((fnName, eval(fnName)))
+# for n, prefix in zip(range(1,6),['uni', 'bi', 'tri', 'quadra', 'penta']):
+#     exec("{}gramDict = util.buildNGramDict(taggedReviews, {})".format(prefix, n))
+#     exec("""def {}gram_score(inp):\n\ttotal = 0\n\tfor {}gram in nltk.ngrams(inp, 
+#         {}):\n\t\ttotal += {}gramDict[{}gram]\n\treturn total""".format(prefix,
+#                                                                          prefix,
+#                                                                          n,
+#                                                                          prefix,
+#                                                                          prefix))
+#     fnName = "{}gram_score".format(prefix)
+#     definedFns.append((fnName, eval(fnName)))
+
+nounPhraseDict = util.buildNounPhraseDict(taggedReviews)
+def nounphrase_score(inp):
+    return nounPhraseDict[inp]
+definedFns.append(('nounphrase_score', nounphrase_score))
+print nounPhraseDict
+
 
 for fn in [('total_sentiment', total_sentiment),
            ('num_positive_sentiment_words', num_positive_sentiment_words),
-           ('num_negative_sentiment_words', num_negative_sentiment_words)]:
+           ('num_negative_sentiment_words', num_negative_sentiment_words),
+           ]:
     definedFns.append(fn)
 
 ###############################################################################
