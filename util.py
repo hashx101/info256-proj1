@@ -23,11 +23,10 @@ def sumSentiment(sequence):
 
 def buildNGramDict(taggedReviews, n=1):
     ngramDict = defaultdict(lambda: 0)
-    for i, taggedReview in enumerate(taggedReviews):
+    for taggedReview in taggedReviews:
         for taggedSentence in taggedReview:
             for ngram in ngrams(wordpunct_tokenize(taggedSentence.sentence), n):
                 ngramDict[ngram] = sum([feature.sign for feature in taggedSentence.features])
-    print ngramDict
     return ngramDict
 
 

@@ -26,9 +26,6 @@ os.chdir('../..')
 
 definedFns = []
 sentiments = util.getWordSentimentDict()
-unigramDict = util.buildNGramDict(taggedReviews, 1)
-bigramDict = util.buildNGramDict(taggedReviews, 2)
-trigramDict = util.buildNGramDict(taggedReviews, 3)
 
 def total_sentiment(inp):
     total = 0
@@ -51,23 +48,20 @@ def num_negative_sentiment_words(inp):
             totalNeg += 1
     return totalNeg
 
-def unigram_score(inp):
-    total = 0
-    for unigram in nltk.ngrams(inp, 2):
-        total += unigramDict[unigram]
-    return total
-
-def bigram_score(inp):
-    total = 0
-    for bigram in nltk.ngrams(inp, 2):
-        total += bigramDict[bigram]
-    return total
+for n, prefix in zip(range(1,6),['uni', 'bi', 'tri', 'quadra', 'penta']):
+    exec("{}gramDict = util.buildNGramDict(taggedReviews, {})".format(prefix, n))
+    exec("""def {}gram_score(inp):\n\ttotal = 0\n\tfor {}gram in nltk.ngrams(inp, 
+        {}):\n\t\ttotal += {}gramDict[{}gram]\n\treturn total""".format(prefix,
+                                                                         prefix,
+                                                                         n,
+                                                                         prefix,
+                                                                         prefix))
+    fnName = "{}gram_score".format(prefix)
+    definedFns.append((fnName, eval(fnName)))
 
 for fn in [('total_sentiment', total_sentiment),
            ('num_positive_sentiment_words', num_positive_sentiment_words),
-           ('num_negative_sentiment_words', num_negative_sentiment_words),
-           ('bigram_score', bigram_score),
-           ('unigram_score', unigram_score)]:
+           ('num_negative_sentiment_words', num_negative_sentiment_words)]:
     definedFns.append(fn)
 
 ###############################################################################
