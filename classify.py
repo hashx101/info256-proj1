@@ -29,10 +29,10 @@ for filename in files:
 os.chdir(originalDir)
 
 ###### Compile/load sentiment dictionaries ####################################
-staticSentimentDicts += [('afinn96', 'dicts/afinn-96.dict'),
-                         ('afinn111', 'dicts/afinn-111.dict'),
-                         ('nielsen2009', 'dicts/Nielsen2009Responsible_emotion.dict'),
-                         ('nielsen2009', 'dicts/Nielsen2010Responsible_english.dict')]
+staticSentimentDicts = [('afinn96', 'dicts/afinn-96.dict'),
+                        ('afinn111', 'dicts/afinn-111.dict'),
+                        ('nielsen2009', 'dicts/Nielsen2009Responsible_emotion.dict'),
+                        ('nielsen2009', 'dicts/Nielsen2010Responsible_english.dict')]
 
 # load static dicts
 for name, path in staticSentimentDicts:
