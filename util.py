@@ -61,12 +61,13 @@ def buildWordSentimentDict(taggedReviews,
     return nounPhraseDict
 
 
-def buildNounPhraseDict(taggedReviews):
+def buildNounPhraseDict(taggedReviews,
+                        applyFn=sentenceSumSentiment):
     nounPhraseDict = defaultdict(lambda: 0)
     for taggedReview in taggedReviews:
         for taggedSentence in taggedReview:
             for np in extract_noun_phrases(taggedSentence.sentence):
-                nounPhraseDict[np] = (nounPhraseDict[np] + sentenceSumSentiment(taggedSentence)) / 2
+                nounPhraseDict[np] = (nounPhraseDict[np] + applyFn(taggedSentence)) / 2
     return nounPhraseDict
 
 
