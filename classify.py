@@ -1,6 +1,7 @@
 from __future__ import division
 import parse
 import util
+import filtering
 
 import nltk
 from sklearn.svm import LinearSVC
@@ -12,65 +13,90 @@ import os
 import glob
 from pprint import pprint
 
-originalDir = os.curdir
 ###############################################################################
 ## Feature generation
 ###############################################################################
+originalDir = os.path.abspath(os.curdir)
+definedFns = []
+loadedSentimentDicts = []
 
+###### Load tagged reviews ####################################################
 os.chdir('data/training')
 files = glob.glob("*.txt")
 taggedReviews = []
 for filename in files:
     taggedReviews += parse.parse_file(filename)
-os.chdir('../..')
+os.chdir(originalDir)
 
-definedFns = []
-sentiments = util.getWordSentimentDict()
+###### Compile/load sentiment dictionaries ####################################
+staticSentimentDicts += [('afinn96', 'dicts/afinn-96.dict'),
+                         ('afinn111', 'dicts/afinn-111.dict'),
+                         ('nielsen2009', 'dicts/Nielsen2009Responsible_emotion.dict'),
+                         ('nielsen2009', 'dicts/Nielsen2010Responsible_english.dict')]
 
-def total_sentiment(inp):
-    total = 0
-    for word in map(lambda w: w.lower().strip(), inp.split(' ')):
-        if word in sentiments:
-            total += sentiments[word]
-    return total
+# load static dicts
+for name, path in staticSentimentDicts:
+    dictSym = "{}SentimentsDict".format(name)
+    exec("{} = util.loadWordSentimentDict(os.path.join(originalDir, '{}'))".format(dictSym,
+                                                                                   path))
+    loadedSentimentDicts.append((dictSym, eval(dictSym)))
 
-def num_positive_sentiment_words(inp):
-    totalPos = 0
-    for word in map(lambda w: w.lower().strip(), inp.split(' ')):
-        if word in sentiments and sentiments[word] > 0:
-            totalPos += 1
-    return totalPos
+# compile learned dicts using various apply fucntions
 
-def num_negative_sentiment_words(inp):
+for name, fn in [('sum', 'util.sentenceSumSentiment'),
+                 ('ternary', 'util.sentenceTernarySentiment')]:
+    exec("learned_{}_sentiments = util.buildWordSentimentDict(taggedReviews, applyFn={})".format(name, fn))
+    dictName = "learned_{}_sentiments".format(name)
+    loadedSentimentDicts.append((dictName, eval(dictName)))
+
+filterFn = filtering.chainFilter(filtering.lower,
+                                 filtering.lemmatize,
+                                 filtering.remove_stopwords)
+for name, sentimentDict in loadedSentimentDicts:
+    exec("""def total_sentiment_{0}(inp):
+        total = 0
+        for word in filterFn(filtering.tokenize(inp)):
+            if word in {0}:
+                total += {0}[word]
+        return total""".format(name))
+    fnName = "total_sentiment_{}".format(name)
+    definedFns.append((fnName, eval(fnName)))
+
+    exec("""def num_positive_sentiment_words_{0}(inp):
+            totalPos = 0
+            for word in filterFn(filtering.tokenize(inp)):
+                if word in {0} and {0}[word] > 0:
+                    totalPos += 1
+            return totalPos
+        """.format(name))
+    fnName = "num_positive_sentiment_words_{}".format(name)
+    definedFns.append((fnName, eval(fnName)))
+
+    exec("""def num_negative_sentiment_words_{0}(inp):
     totalNeg = 0
-    for word in map(lambda w: w.lower().strip(), inp.split(' ')):
-        if word in sentiments and sentiments[word] < 0:
+    for word in filterFn(filtering.tokenize(inp)):
+        if word in {0} and {0}[word] < 0:
             totalNeg += 1
-    return totalNeg
+    return totalNeg""".format(name))
+    fnName = "num_negative_sentiment_words_{}".format(name)
+    definedFns.append((fnName, eval(fnName)))
 
-# for n, prefix in zip(range(1,6),['uni', 'bi', 'tri', 'quadra', 'penta']):
-#     exec("{}gramDict = util.buildNGramDict(taggedReviews, {})".format(prefix, n))
-#     exec("""def {}gram_score(inp):\n\ttotal = 0\n\tfor {}gram in nltk.ngrams(inp, 
-#         {}):\n\t\ttotal += {}gramDict[{}gram]\n\treturn total""".format(prefix,
-#                                                                          prefix,
-#                                                                          n,
-#                                                                          prefix,
-#                                                                          prefix))
-#     fnName = "{}gram_score".format(prefix)
-#     definedFns.append((fnName, eval(fnName)))
+for n, prefix in zip(range(1,6),['uni', 'bi', 'tri', 'quadra', 'penta']):
+    exec("{}gramDict = util.buildNGramDict(taggedReviews, {})".format(prefix, n))
+    exec("""def {}gram_score(inp):\n\ttotal = 0\n\tfor {}gram in nltk.ngrams(inp, 
+        {}):\n\t\ttotal += {}gramDict[{}gram]\n\treturn total""".format(prefix,
+                                                                         prefix,
+                                                                         n,
+                                                                         prefix,
+                                                                         prefix))
+    fnName = "{}gram_score".format(prefix)
+    definedFns.append((fnName, eval(fnName)))
 
 nounPhraseDict = util.buildNounPhraseDict(taggedReviews)
 def nounphrase_score(inp):
     return nounPhraseDict[inp]
 definedFns.append(('nounphrase_score', nounphrase_score))
-print nounPhraseDict
 
-
-for fn in [('total_sentiment', total_sentiment),
-           ('num_positive_sentiment_words', num_positive_sentiment_words),
-           ('num_negative_sentiment_words', num_negative_sentiment_words),
-           ]:
-    definedFns.append(fn)
 
 ###############################################################################
 ## Classifier
@@ -79,12 +105,13 @@ for fn in [('total_sentiment', total_sentiment),
 def taggedReviews(directory="data/training"):
     """Generates a list of tagged sentence/sentiment tuples for training
     our classifier"""
-    os.chdir(directory)
+    startingDir = os.curdir
+    os.chdir(os.path.abspath(directory))
     files = glob.glob("*.txt")
 
     taggedReviews = []
     for filename in files:
-        parsedReviews = parse.parse_file(os.path.join(os.curdir, filename))
+        parsedReviews = parse.parse_file(os.path.abspath(os.path.join(os.curdir, filename)))
         reviewText = ""
         for review in parsedReviews:
             for taggedSentence in review:
@@ -92,6 +119,8 @@ def taggedReviews(directory="data/training"):
                 for feature in taggedSentence.features:
                     featureSentiment += feature.sign * feature.magnitude
                 taggedReviews.append((taggedSentence.sentence, featureSentiment))
+
+    os.chdir(os.path.abspath(startingDir))
     return taggedReviews
 
 
@@ -112,6 +141,7 @@ def buildClassifier(inp,
     classifier = SklearnClassifier(LinearSVC()).train(trainSet)
     if len(holdoutSet) > 0:
         nltk.classify.accuracy(classifier, holdoutSet)
+    print("Trained accuracy: {}".format(nltk.classify.accuracy(classifier, trainSet)))
     return classifier
 
 
@@ -120,7 +150,11 @@ def main():
     print("{} features".format(len(definedFns)))
     c = buildClassifier(taggedReviews(), 0)
     holdoutSet = taggedReviews('/home/alexm/info256/proj1/data/heldout')
-    print nltk.classify.accuracy(c, [(applyFeatures(text, *map(lambda tup: tup[1], definedFns)), tag) for text, tag in holdoutSet])
+    print "Holdout accuracy: {}".format(nltk.classify.accuracy(c,
+                                                               [(applyFeatures(text,
+                                                                               *map(lambda tup: tup[1],
+                                                                                    definedFns)),
+                                                                               tag) for text, tag in holdoutSet]))
     return c
 
 if __name__ == '__main__':
