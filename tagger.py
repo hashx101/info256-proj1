@@ -21,10 +21,3 @@ def tagger():
     else:
         tagger = build_tagger()
     return tagger
-
-
-if __name__ == "__main__":
-    tagger = tagger()
-
-    print tagger.evaluate(brown.tagged_sents(categories='news'))
-    print tagger.evaluate(brown.tagged_sents(categories='reviews'))
