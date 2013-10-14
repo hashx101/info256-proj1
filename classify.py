@@ -111,7 +111,7 @@ def taggedReviews(directory="data/training"):
     """Generates a list of tagged sentence/sentiment tuples for training
     our classifier. Only takes lines where there are either 0 features, or all
     positive or negative features."""
-    startingDir = os.curdir
+    startingDir = os.getcwd()
     os.chdir(os.path.abspath(directory))
     files = glob.glob("*.txt")
 
@@ -160,7 +160,7 @@ def main():
     pprint(map(lambda x: x[0], definedFns))
     print("{} features".format(len(definedFns)))
     c = buildClassifier(taggedReviews(), 0)
-    holdoutSet = taggedReviews('/home/alexm/info256/proj1/data/heldout')
+    holdoutSet = taggedReviews('data/heldout/')
     print "Holdout accuracy: {}".format(nltk.classify.accuracy(c,
                                                                [(applyFeatures(text,
                                                                                *map(lambda tup: tup[1],
