@@ -19,6 +19,8 @@ from pprint import pprint
 originalDir = os.path.abspath(os.curdir)
 definedFns = []
 loadedSentimentDicts = []
+taggedSentenceEvaluationFunctions = [('sum', 'util.sentenceSumSentiment'),
+                                     ('ternary', 'util.sentenceTernarySentiment')]
 
 ###### Load tagged reviews ####################################################
 os.chdir('data/training')
@@ -43,8 +45,7 @@ for name, path in staticSentimentDicts:
 
 # compile learned dicts using various apply fucntions
 
-for name, fn in [('sum', 'util.sentenceSumSentiment'),
-                 ('ternary', 'util.sentenceTernarySentiment')]:
+for name, fn in taggedSentenceEvaluationFunctions:
     exec("learned_{}_sentiments = util.buildWordSentimentDict(taggedReviews, applyFn={})".format(name, fn))
     dictName = "learned_{}_sentiments".format(name)
     loadedSentimentDicts.append((dictName, eval(dictName)))
@@ -81,21 +82,25 @@ for name, sentimentDict in loadedSentimentDicts:
     fnName = "num_negative_sentiment_words_{}".format(name)
     definedFns.append((fnName, eval(fnName)))
 
-for n, prefix in zip(range(1,6),['uni', 'bi', 'tri', 'quadra', 'penta']):
-    exec("{}gramDict = util.buildNGramDict(taggedReviews, {})".format(prefix, n))
-    exec("""def {}gram_score(inp):\n\ttotal = 0\n\tfor {}gram in nltk.ngrams(inp, 
-        {}):\n\t\ttotal += {}gramDict[{}gram]\n\treturn total""".format(prefix,
-                                                                         prefix,
-                                                                         n,
-                                                                         prefix,
-                                                                         prefix))
-    fnName = "{}gram_score".format(prefix)
-    definedFns.append((fnName, eval(fnName)))
+# for n, prefix in zip(range(1,6),['uni', 'bi', 'tri', 'quadra', 'penta']):
+#     exec("{}gramDict = util.buildNGramDict(taggedReviews, {})".format(prefix, n))
+#     exec("""def {}gram_score(inp):\n\ttotal = 0\n\tfor {}gram in nltk.ngrams(inp, 
+#         {}):\n\t\ttotal += {}gramDict[{}gram]\n\treturn total""".format(prefix,
+#                                                                          prefix,
+#                                                                          n,
+#                                                                          prefix,
+#                                                                          prefix))
+#     fnName = "{}gram_score".format(prefix)
+#     definedFns.append((fnName, eval(fnName)))
 
-nounPhraseDict = util.buildNounPhraseDict(taggedReviews)
-def nounphrase_score(inp):
-    return nounPhraseDict[inp]
-definedFns.append(('nounphrase_score', nounphrase_score))
+for name, fnName in taggedSentenceEvaluationFunctions:
+    dictName = "nounphrase_{}_dict".format(name)
+    exec("{} = util.buildNounPhraseDict(taggedReviews, applyFn={})".format(dictName, fnName))
+    exec("""def nounphrase_{}_score(inp):
+            return {}[inp]
+         """.format(name, dictName))
+    featureName = "nounphrase_{}_score".format(name)
+    definedFns.append((featureName, eval(featureName)))
 
 
 ###############################################################################
