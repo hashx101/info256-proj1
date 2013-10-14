@@ -1,3 +1,4 @@
+
 import os
 import nltk
 from nltk import ngrams
@@ -45,7 +46,7 @@ def loadWordSentimentDict(dictPath='word_sentiment.dict'):
 def buildWordSentimentDict(taggedReviews,
                            applyFn=sentenceSumSentiment,
                            filterFn=filtering.chainFilter(filtering.lower,
-                                                          filtering.remove_stopwords)):
+                                                          filtering.removeStopwords)):
     """
     Builds a dictionary of word sentiments from training data by taking the
     running average of applying fn (defaults to sentenceSumSentiment). Filters
@@ -57,7 +58,7 @@ def buildWordSentimentDict(taggedReviews,
             tokenizedSentence = wordpunct_tokenize(taggedSentence.sentence)
             filteredSentence = filterFn(tokenizedSentence)
             for word in filteredSentence:
-                nounPhraseDict[word] = (nounPhraseDict[word] + applyFn(taggedSentence)) / 2
+                nounPhraseDict[word] = (nounPhraseDict[word] + applyFn(taggedSentence)) / 2.0
     return nounPhraseDict
 
 
@@ -67,18 +68,22 @@ def buildNounPhraseDict(taggedReviews,
     for taggedReview in taggedReviews:
         for taggedSentence in taggedReview:
             for np in extract_noun_phrases(taggedSentence.sentence):
-                nounPhraseDict[np] = (nounPhraseDict[np] + applyFn(taggedSentence)) / 2
+                nounPhraseDict[np] = (nounPhraseDict[np] + applyFn(taggedSentence)) / 2.0
     return nounPhraseDict
 
 
-def buildNGramDict(taggedReviews, n=1):
+def buildNGramDict(taggedReviews,
+                   n=1,
+                   applyFn=sentenceSumSentiment,
+                   filterFn=filtering.chainFilter(filtering.lower,
+                                                  filtering.removeStopwords)):
     ngramDict = defaultdict(lambda: 0)
     for taggedReview in taggedReviews:
         for taggedSentence in taggedReview:
-            for ngram in ngrams(wordpunct_tokenize(taggedSentence.sentence), n):
-                ngramDict[ngram] = sum([feature.sign for feature in taggedSentence.features])
+            sentenceSentiment = applyFn(taggedSentence)
+            for ngram in ngrams(filterFn(wordpunct_tokenize(taggedSentence.sentence)), n):
+                ngramDict[ngram] = (ngramDict[ngram] + sentenceSentiment) / 2.0
     return ngramDict
-
 
 def main():
     pass

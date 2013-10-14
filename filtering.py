@@ -1,8 +1,10 @@
 import nltk
+import string
 
 
 lemmatizer = nltk.WordNetLemmatizer()
 stemmer = nltk.stem.porter.PorterStemmer()
+table = string.maketrans("","")
 
 
 stopwordsDict = {}
@@ -13,8 +15,12 @@ with open('stopwords.dict') as f:
             stopwordsDict[form] = 1
 
 
-def tokenize(string):
-    return nltk.tokenize.wordpunct_tokenize(string)
+def stripPunct(s):
+    return s.translate(table, string.punctuation)
+    
+
+def tokenize(s):
+    return nltk.tokenize.wordpunct_tokenize(s)
 
 
 def lower(word):
@@ -29,7 +35,7 @@ def stem(word):
     return stemmer.stem_word(word)
 
 
-def remove_stopwords(word, stopwords=stopwordsDict):
+def removeStopwords(word, stopwords=stopwordsDict):
     return None if word in stopwords else word
 
 
@@ -43,5 +49,5 @@ def chainFilter(*fns):
 
 if __name__ == "__main__":
     words = "I am a stupid SenTence 12.".split(" ")
-    filterFn = chainFilter(lower, lambda w: remove_stopwords(w))
+    filterFn = chainFilter(lower, lambda w: removeStopwords(w))
     print filterFn(words)

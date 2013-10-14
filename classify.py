@@ -5,6 +5,7 @@ import filtering
 
 import nltk
 from sklearn.svm import LinearSVC
+from sklearn.naive_bayes import BernoulliNB
 from nltk.classify import SklearnClassifier
 
 import collections
@@ -52,7 +53,7 @@ for name, fn in taggedSentenceEvaluationFunctions:
 
 filterFn = filtering.chainFilter(filtering.lower,
                                  filtering.lemmatize,
-                                 filtering.remove_stopwords)
+                                 filtering.removeStopwords)
 for name, sentimentDict in loadedSentimentDicts:
     exec("""def total_sentiment_{0}(inp):
         total = 0
@@ -82,16 +83,14 @@ for name, sentimentDict in loadedSentimentDicts:
     fnName = "num_negative_sentiment_words_{}".format(name)
     definedFns.append((fnName, eval(fnName)))
 
-# for n, prefix in zip(range(1,6),['uni', 'bi', 'tri', 'quadra', 'penta']):
-#     exec("{}gramDict = util.buildNGramDict(taggedReviews, {})".format(prefix, n))
-#     exec("""def {}gram_score(inp):\n\ttotal = 0\n\tfor {}gram in nltk.ngrams(inp, 
-#         {}):\n\t\ttotal += {}gramDict[{}gram]\n\treturn total""".format(prefix,
-#                                                                          prefix,
-#                                                                          n,
-#                                                                          prefix,
-#                                                                          prefix))
-#     fnName = "{}gram_score".format(prefix)
-#     definedFns.append((fnName, eval(fnName)))
+for n, prefix in zip(range(1,6),['uni', 'bi', 'tri', 'quadra', 'penta']):
+    exec("{}gramDict = util.buildNGramDict(taggedReviews, {})".format(prefix, n))
+    exec("""def {0}gram_score(inp):\n\ttotal = 0\n\tfor {0}gram in nltk.ngrams(inp, 
+        {1}):\n\t\ttotal += {0}gramDict[{0}gram]\n\treturn int(total)""".format(prefix,
+                                                                           n))
+    fnName = "{}gram_score".format(prefix)
+    definedFns.append((fnName, eval(fnName)))
+
 
 for name, fnName in taggedSentenceEvaluationFunctions:
     dictName = "nounphrase_{}_dict".format(name)
@@ -149,7 +148,7 @@ def buildClassifier(inp,
     processedFeatures = [(applyFeatures(text, *featureList), tag) for text, tag in inp]
     trainSet = processedFeatures[:int(len(processedFeatures) * (1 - holdoutRatio))]
     holdoutSet = processedFeatures[int(len(processedFeatures) * holdoutRatio):]
-    classifier = SklearnClassifier(LinearSVC()).train(trainSet)
+    classifier = SklearnClassifier(LinearSVC(dual=False)).train(trainSet)
     if len(holdoutSet) > 0:
         nltk.classify.accuracy(classifier, holdoutSet)
     print("Trained accuracy: {}".format(nltk.classify.accuracy(classifier, trainSet)))
