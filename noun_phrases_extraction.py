@@ -3,6 +3,7 @@
 import nltk
 from nltk.corpus import stopwords
 import tagger
+import filtering
 
 
 ###############################################################################
@@ -17,8 +18,8 @@ sentence_re = r'''(?x)      # set flag to allow verbose regexps
     | [][.,;"'?():-_`]      # these are separate tokens
 '''
 
-lemmatizer = nltk.WordNetLemmatizer()
-stemmer = nltk.stem.porter.PorterStemmer()
+lemmatize = filtering.lemmatize
+stem = filtering.stem
 
 # Taken from Su Nam Kim Paper
 grammar = r"""
@@ -36,40 +37,40 @@ stopwords = stopwords.words('english')
 tagger = tagger.tagger()
 
 ###############################################################################
-## Helper function for normalizing words and extracting noun phrases from
-## the Syntax Tree
+## Helper function for normalizing words and extracting 
+## noun phrases from the Syntax Tree
 ###############################################################################
 
 def leaves(tree):
-    """Finds NP (nounphrase) leaf nodes of a chunk tree."""
+    """Finds NP (nounphrase) leaf nodes of a chunk tree"""
     for subtree in tree.subtrees(filter = lambda t: t.node=='NP'):
         yield subtree.leaves()
 
 
 def normalize(word):
-    """Normalizes words to lowercase and stems and lemmatizes it."""
+    """Normalizes words to lowercase and stems and lemmatizes it"""
     word = word.lower()
-    #word = stemmer.stem_word(word)
-    word = lemmatizer.lemmatize(word)
+    #word = stem(word)
+    word = lemmatize(word)
     return word
 
 
 def acceptable_word(word):
-    """Checks conditions for acceptable word: length, stopword."""
+    """Checks conditions for acceptable word: valid length and no stopwords"""
     accepted = bool(2 <= len(word) <= 40
         and word.lower() not in stopwords)
     return accepted
 
 
 def get_terms(tree):
-    """Get all the acceptable noun_phrase term from the syntax tree"""
+    """Gets all the acceptable noun_phrase term from the syntax tree"""
     for leaf in leaves(tree):
-        term = [ normalize(w) for w,t in leaf if acceptable_word(w) ]
+        term = [normalize(w) for w,t in leaf if acceptable_word(w)]
         yield term
 
 
 def extract_noun_phrases(text):
-    """Extract all noun_phrases from the given text"""
+    """Extracts all noun_phrases from the given text"""
     toks = nltk.regexp_tokenize(text, sentence_re)
     postoks = tagger.tag(toks)
 

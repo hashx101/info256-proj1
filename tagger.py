@@ -5,6 +5,7 @@ import os
 
 
 def build_tagger():
+    """Backoff tagger starting with bigram tagging. Default tag is NN"""
     brown_tagged_sents = brown.tagged_sents()
     t0 = nltk.DefaultTagger('NN')
     t1 = nltk.UnigramTagger(brown_tagged_sents, backoff=t0)
@@ -15,6 +16,7 @@ def build_tagger():
 
 
 def tagger():
+    """Loads the tagger if the pickle file exists, otherwise build one"""
     if os.path.exists('tagger.pickle'):
         with open('tagger.pickle', 'rb') as f:
             tagger = load(f)
