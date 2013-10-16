@@ -7,6 +7,8 @@ import nltk
 from sklearn.svm import LinearSVC
 from sklearn.naive_bayes import BernoulliNB
 from nltk.classify import SklearnClassifier
+import nltk.classify.maxent
+from nltk.classify import MaxentClassifier
 
 import collections
 import re
@@ -158,7 +160,14 @@ def buildClassifier(inp,
     processedFeatures = [(applyFeatures(text, *featureList), tag) for text, tag in inp]
     trainSet = processedFeatures[:int(len(processedFeatures) * (1 - holdoutRatio))]
     holdoutSet = processedFeatures[int(len(processedFeatures) * holdoutRatio):]
+    
+    # naive bayes
     classifier = nltk.NaiveBayesClassifier.train(trainSet)
+    
+    # max ent
+    #algorithm = nltk.classify.MaxentClassifier.ALGORITHMS[0]
+    #classifer = MaxentClassifier.train(trainSet, algorithm)
+    
     if len(holdoutSet) > 0:
         nltk.classify.accuracy(classifier, holdoutSet)
     print("Trained accuracy: {}".format(nltk.classify.accuracy(classifier, trainSet)))
