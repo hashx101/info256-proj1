@@ -22,7 +22,7 @@ def sentenceTernarySentiment(taggedSentence):
     sumFeatures = sentenceSumSentiment(taggedSentence)
     if sumFeatures < 0:
         return -1
-    elif sumFeatures > 0:
+    elif sumFeatures > 1:
         return 1
     else:
         return 0

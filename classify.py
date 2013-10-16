@@ -4,10 +4,6 @@ import util
 import filtering
 
 import nltk
-from sklearn.svm import LinearSVC
-from sklearn.naive_bayes import BernoulliNB
-from nltk.classify import SklearnClassifier
-import nltk.classify.maxent
 from nltk.classify import MaxentClassifier
 
 import collections
@@ -15,12 +11,53 @@ import re
 import os
 import glob
 from pprint import pprint
+import sys
 
 ###############################################################################
 ## Feature generation
 ###############################################################################
 originalDir = os.path.abspath(os.curdir)
 definedFns = []
+
+
+def tagReviews(directory="data/training", output=False):
+    """Generates a list of tagged sentence/sentiment tuples for training
+    our classifier. Only takes lines where there are either 0 features, or all
+    positive or negative features."""
+    startingDir = os.getcwd()
+    os.chdir(os.path.abspath(directory))
+    files = glob.glob("*.txt")
+    if output:
+        outputFile = open('../../output.txt', 'w')
+
+    taggedReviews = []
+    for filename in files:
+        lineNumber = 0
+        parsedReviews = parse.parse_file(os.path.abspath(os.path.join(os.curdir, filename)))
+        reviewText = ""
+        for review in parsedReviews:
+            for taggedSentence in review:
+                if len(taggedSentence.features) == 0:
+                    taggedReviews.append((taggedSentence.sentence, 0))
+                else:
+                    firstSentiment = taggedSentence.features[0].sign
+                    allSame = True
+                    for feature in taggedSentence.features:
+                        if feature.sign != firstSentiment:
+                            allSame = False
+                    if allSame:
+                        taggedReviews.append((taggedSentence.sentence, firstSentiment))
+                        if output:
+                            outputFile.write("%s\t%d\t%d\n" % (filename, lineNumber, firstSentiment))
+                lineNumber += 1
+    if output:
+        outputFile.close()
+        print "Output stored for %s" % directory
+
+    os.chdir(os.path.abspath(startingDir))
+    return taggedReviews
+
+
 loadedSentimentDicts = []
 taggedSentenceEvaluationFunctions = [('sum', 'util.sentenceSumSentiment'),
                                      ('ternary', 'util.sentenceTernarySentiment')]
@@ -108,44 +145,6 @@ for name, fnName in taggedSentenceEvaluationFunctions:
 ## Classifier
 ###############################################################################
 
-def taggedReviews(directory="data/training", output=False):
-    """Generates a list of tagged sentence/sentiment tuples for training
-    our classifier. Only takes lines where there are either 0 features, or all
-    positive or negative features."""
-    startingDir = os.getcwd()
-    os.chdir(os.path.abspath(directory))
-    files = glob.glob("*.txt")
-    if output:
-        outputFile = open('../../output.txt', 'w')
-
-    taggedReviews = []
-    for filename in files:
-        lineNumber = 0
-        parsedReviews = parse.parse_file(os.path.abspath(os.path.join(os.curdir, filename)))
-        reviewText = ""
-        for review in parsedReviews:
-            for taggedSentence in review:
-                if len(taggedSentence.features) == 0:
-                    taggedReviews.append((taggedSentence.sentence, 0))
-                else:
-                    firstSentiment = taggedSentence.features[0].sign
-                    allSame = True
-                    for feature in taggedSentence.features:
-                        if feature.sign != firstSentiment:
-                            allSame = False
-                    if allSame:
-                        taggedReviews.append((taggedSentence.sentence, firstSentiment))
-                        if output:
-                            outputFile.write("%s\t%d\t%d\n" % (filename, lineNumber, firstSentiment))
-                lineNumber += 1
-    if output:
-        outputFile.close()
-        print "Output stored for %s" % directory
-
-    os.chdir(os.path.abspath(startingDir))
-    return taggedReviews
-
-
 def applyFeatures(inp, *vectorFns):
     featureDict = {}
     for fn in vectorFns:
@@ -174,17 +173,29 @@ def buildClassifier(inp,
     return classifier
 
 
-def main():
-    pprint(map(lambda x: x[0], definedFns))
-    print("{} features".format(len(definedFns)))
-    c = buildClassifier(taggedReviews(), 0)
-    holdoutSet = taggedReviews('data/heldout/')
-    print "Holdout accuracy: {}".format(nltk.classify.accuracy(c,
-                                                               [(applyFeatures(text,
-                                                                               *map(lambda tup: tup[1],
-                                                                                    definedFns)),
-                                                                               tag) for text, tag in holdoutSet]))
-    return c
+def grade(directory, classifier):
+    os.chdir(directory)
+    files = glob.glob("*.txt")
+    output = ""
+    for filename in files:
+        with open(filename) as f:
+            for i, line in enumerate(f.readlines()):
+                classification = classifier.classify(applyFeatures(line, *map(lambda tup: tup[1], definedFns)))
+                if "[t]" in line:
+                    classification = 0
+                else:
+                    line = line[2:]
+                outputLine = "{} {} {}\n".format(filename, i + 1, classification)
+                print outputLine
+                output += outputLine
+    with open(os.path.join(directory, 'g_10_output.txt'), 'w') as f:
+        f.write(output)
+
+def main(directory):
+    c = buildClassifier(tagReviews(), 0)
+    grade(directory, c)
 
 if __name__ == '__main__':
-    main()
+    if len(sys.argv) != 2:
+        print "Error: Incorrect number of arguments."
+    main(sys.argv[1])
