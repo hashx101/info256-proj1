@@ -106,16 +106,19 @@ for name, fnName in taggedSentenceEvaluationFunctions:
 ## Classifier
 ###############################################################################
 
-def taggedReviews(directory="data/training"):
+def taggedReviews(directory="data/training", output=False):
     """Generates a list of tagged sentence/sentiment tuples for training
     our classifier. Only takes lines where there are either 0 features, or all
     positive or negative features."""
     startingDir = os.getcwd()
     os.chdir(os.path.abspath(directory))
     files = glob.glob("*.txt")
+    if output:
+        outputFile = open('../../output.txt', 'w')
 
     taggedReviews = []
     for filename in files:
+        lineNumber = 0
         parsedReviews = parse.parse_file(os.path.abspath(os.path.join(os.curdir, filename)))
         reviewText = ""
         for review in parsedReviews:
@@ -130,6 +133,13 @@ def taggedReviews(directory="data/training"):
                             allSame = False
                     if allSame:
                         taggedReviews.append((taggedSentence.sentence, firstSentiment))
+                        if output:
+                            outputFile.write("%s\t%d\t%d\n" % (filename, lineNumber, firstSentiment))
+                lineNumber += 1
+    if output:
+        outputFile.close()
+        print "Output stored for %s" % directory
+
     os.chdir(os.path.abspath(startingDir))
     return taggedReviews
 
