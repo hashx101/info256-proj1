@@ -148,7 +148,7 @@ def buildClassifier(inp,
     processedFeatures = [(applyFeatures(text, *featureList), tag) for text, tag in inp]
     trainSet = processedFeatures[:int(len(processedFeatures) * (1 - holdoutRatio))]
     holdoutSet = processedFeatures[int(len(processedFeatures) * holdoutRatio):]
-    classifier = SklearnClassifier(LinearSVC(dual=False)).train(trainSet)
+    classifier = nltk.NaiveBayesClassifier.train(trainSet)
     if len(holdoutSet) > 0:
         nltk.classify.accuracy(classifier, holdoutSet)
     print("Trained accuracy: {}".format(nltk.classify.accuracy(classifier, trainSet)))
