@@ -4,8 +4,7 @@ import util
 import filtering
 
 import nltk
-from nltk.classify import MaxentClassifier
-
+from nltk.classify import NaiveBayesClassifier
 import collections
 import re
 import os
@@ -18,7 +17,6 @@ import sys
 ###############################################################################
 originalDir = os.path.abspath(os.curdir)
 definedFns = []
-
 
 def tagReviews(directory="data/training", output=False):
     """Generates a list of tagged sentence/sentiment tuples for training
@@ -57,6 +55,12 @@ def tagReviews(directory="data/training", output=False):
     os.chdir(os.path.abspath(startingDir))
     return taggedReviews
 
+def definedFnNames():
+    return map(lambda t: t[0], definedFns)
+
+
+def definedFnSyms():
+    return map(lambda t: t[1], definedFns)
 
 loadedSentimentDicts = []
 taggedSentenceEvaluationFunctions = [('sum', 'util.sentenceSumSentiment'),
@@ -91,7 +95,6 @@ for name, fn in taggedSentenceEvaluationFunctions:
     loadedSentimentDicts.append((dictName, eval(dictName)))
 
 filterFn = filtering.chainFilter(filtering.lower,
-                                 filtering.lemmatize,
                                  filtering.removeStopwords)
 for name, sentimentDict in loadedSentimentDicts:
     exec("""def total_sentiment_{0}(inp):
@@ -123,7 +126,7 @@ for name, sentimentDict in loadedSentimentDicts:
     definedFns.append((fnName, eval(fnName)))
 
 for n, prefix in zip(range(1,6),['uni', 'bi', 'tri', 'quadra', 'penta']):
-    exec("{}gramDict = util.buildNGramDict(taggedReviews, {})".format(prefix, n))
+    exec("{}gramDict = util.normalize(util.buildNGramDict(taggedReviews, {}))".format(prefix, n))
     exec("""def {0}gram_score(inp):\n\ttotal = 0\n\tfor {0}gram in nltk.ngrams(inp, 
         {1}):\n\t\ttotal += {0}gramDict[{0}gram]\n\treturn int(total)""".format(prefix,
                                                                            n))
@@ -133,7 +136,7 @@ for n, prefix in zip(range(1,6),['uni', 'bi', 'tri', 'quadra', 'penta']):
 
 for name, fnName in taggedSentenceEvaluationFunctions:
     dictName = "nounphrase_{}_dict".format(name)
-    exec("{} = util.buildNounPhraseDict(taggedReviews, applyFn={})".format(dictName, fnName))
+    exec("{} = util.normalize(util.buildNounPhraseDict(taggedReviews, applyFn={}))".format(dictName, fnName))
     exec("""def nounphrase_{}_score(inp):
             return {}[inp]
          """.format(name, dictName))
@@ -144,7 +147,6 @@ for name, fnName in taggedSentenceEvaluationFunctions:
 ###############################################################################
 ## Classifier
 ###############################################################################
-
 def applyFeatures(inp, *vectorFns):
     featureDict = {}
     for fn in vectorFns:
@@ -155,23 +157,19 @@ def applyFeatures(inp, *vectorFns):
 
 def buildClassifier(inp,
                     holdoutRatio=0,
-                    featureList=map(lambda tup: tup[1], definedFns)):
+                    featureList=definedFnSyms(),
+                    classifier=NaiveBayesClassifier,
+                    **classArgs):
     processedFeatures = [(applyFeatures(text, *featureList), tag) for text, tag in inp]
     trainSet = processedFeatures[:int(len(processedFeatures) * (1 - holdoutRatio))]
     holdoutSet = processedFeatures[int(len(processedFeatures) * holdoutRatio):]
-    
-    # naive bayes
-    classifier = nltk.NaiveBayesClassifier.train(trainSet)
-    
-    # max ent
-    #algorithm = nltk.classify.MaxentClassifier.ALGORITHMS[0]
-    #classifer = MaxentClassifier.train(trainSet, algorithm)
-    
+
+    classifier = classifier.train(trainSet)
+
     if len(holdoutSet) > 0:
         nltk.classify.accuracy(classifier, holdoutSet)
     print("Trained accuracy: {}".format(nltk.classify.accuracy(classifier, trainSet)))
     return classifier
-
 
 def grade(directory, classifier):
     os.chdir(directory)

@@ -1,8 +1,5 @@
-
 import os
 import nltk
-from nltk import ngrams
-from nltk.tokenize import wordpunct_tokenize
 from collections import defaultdict
 from noun_phrases_extraction import extract_noun_phrases
 import filtering
@@ -22,10 +19,17 @@ def sentenceTernarySentiment(taggedSentence):
     sumFeatures = sentenceSumSentiment(taggedSentence)
     if sumFeatures < 0:
         return -1
-    elif sumFeatures > 1:
+    elif sumFeatures > 0:
         return 1
     else:
         return 0
+
+
+def normalize(d, target=1.0):
+    factor = target / (sum(d.itervalues()) + .000001)
+    for key, val in d.iteritems():
+        d[key] = val * factor
+    return d
 
 
 def loadWordSentimentDict(dictPath='word_sentiment.dict'):
@@ -40,7 +44,7 @@ def loadWordSentimentDict(dictPath='word_sentiment.dict'):
             else:
                 word, sentiment = line.split('\t')
                 sentimentDict[word] = int(sentiment)
-    return sentimentDict
+    return normalize(sentimentDict)
 
 
 def buildWordSentimentDict(taggedReviews,
@@ -52,14 +56,14 @@ def buildWordSentimentDict(taggedReviews,
     running average of applying fn (defaults to sentenceSumSentiment). Filters
     out words contained in the filterDict argument.
     """
-    nounPhraseDict = defaultdict(lambda: 0)
+    sentimentDict = defaultdict(lambda: 0)
     for taggedReview in taggedReviews:
         for taggedSentence in taggedReview:
-            tokenizedSentence = wordpunct_tokenize(taggedSentence.sentence)
+            tokenizedSentence = filtering.tokenize(taggedSentence.sentence)
             filteredSentence = filterFn(tokenizedSentence)
             for word in filteredSentence:
-                nounPhraseDict[word] = (nounPhraseDict[word] + applyFn(taggedSentence)) / 2.0
-    return nounPhraseDict
+                sentimentDict[word] += applyFn(taggedSentence)
+    return normalize(sentimentDict)
 
 
 def buildNounPhraseDict(taggedReviews,
@@ -68,8 +72,8 @@ def buildNounPhraseDict(taggedReviews,
     for taggedReview in taggedReviews:
         for taggedSentence in taggedReview:
             for np in extract_noun_phrases(taggedSentence.sentence):
-                nounPhraseDict[np] = (nounPhraseDict[np] + applyFn(taggedSentence)) / 2.0
-    return nounPhraseDict
+                nounPhraseDict[np] += applyFn(taggedSentence)
+    return normalize(nounPhraseDict)
 
 
 def buildNGramDict(taggedReviews,
@@ -81,9 +85,10 @@ def buildNGramDict(taggedReviews,
     for taggedReview in taggedReviews:
         for taggedSentence in taggedReview:
             sentenceSentiment = applyFn(taggedSentence)
-            for ngram in ngrams(filterFn(wordpunct_tokenize(taggedSentence.sentence)), n):
-                ngramDict[ngram] = (ngramDict[ngram] + sentenceSentiment) / 2.0
-    return ngramDict
+            for ngram in nltk.ngrams(filterFn(filtering.tokenize(taggedSentence.sentence)), n):
+                ngramDict[ngram] += ngramDict[ngram]
+    return normalize(ngramDict)
+
 
 def main():
     pass
